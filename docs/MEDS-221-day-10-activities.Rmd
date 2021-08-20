@@ -1,0 +1,86 @@
+---
+title: "Untitled"
+author: "Ryan Munnikhuis"
+date: "8/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+library(janitor)
+library(beeswarm)
+library(ggExtra)
+```
+
+```{r}
+ice_data = read_csv(here::here("data", "ntl33_v7.csv"), na = "-999")
+wiscon_met = read_csv(here::here("data", "ntl20_v6.csv"), na = "-999")
+```
+```{r}
+lake_duration = ice_data %>% 
+  group_by(lakeid) %>% 
+  summarize(ice_duration_mean = mean((ice_duration), na = TRUE))
+
+
+p = ggplot(ice_data, aes(x = lakeid, y = ice_duration)) + geom_point(aes(color = lakeid)) +
+  (labs(title = "Annual Ice Duration per Lake",
+        x = "Lake ID", 
+        y = "Duration of Ice (days)"))
+
+p
+
+  
+ggMarginal(p, type = "boxplot", groupColour = TRUE)
+
+```
+
+```{r}
+mean_wis_ice_dur = ice_data %>% group_by(year4) %>%  
+  summarize(ice_duration_mean = mean((ice_duration), na = TRUE))
+
+ggplot(mean_wis_ice_dur, aes(x = year4, y = ice_duration_mean)) + 
+  geom_line() + 
+  geom_smooth() + labs(title = "Mean Ice Duration per Year Across Wisonson Lakes", 
+                       x = "Year",
+                       y = "Ice Duration (days)")
+
+## There are multiple lakes being observed per year, so the data set contains multiple years. The trend indicates that ice duration has been decreasing over time. 
+
+mean_air_temp = wiscon_met %>% filter(month %in% c(12, 1, 2)) %>% 
+  group_by(year4) %>% 
+  summarize(ave_air_temp = mean((ave_air_temp_adjusted), na = TRUE))
+
+ggplot(mean_air_temp, aes(x = year4, y = ave_air_temp)) + 
+  geom_point() + 
+  geom_smooth() +
+  labs(title = "Yearly Average Temperature per Winter", 
+       x = "Year", 
+       y = "Average Winter Temperature (Celsius)")  
+
+## There is a positive relational trend between year and increase in temperature. This would suggest that Wisconsin winters are getting warmer. 
+
+```
+```{r}
+winter_join = full_join(mean_wis_ice_dur, mean_air_temp, by = "year4")
+
+ggplot(winter_join, aes(ave_air_temp, ice_duration_mean)) + geom_point() 
+
+## The combined data sets indicated that an increase in temps results in a decrease in ice duration days. 
+
+
+```
+```{r}
+ice_thaw = ice_data %>% filter(year4 >= 1970) %>% 
+  mutate(ice_off = lubridate::ymd(ice_off)) %>%   
+  mutate(ice_off_year_day = lubridate::yday(ice_off))
+
+ggplot(ice_thaw, aes(ice_duration, ice_off_year_day)) + geom_point() + geom_smooth()
+
+## There is a positive correlation between the number of days that ice exists and the last day of the year that there is ice. 
+
+
+
+```
+
